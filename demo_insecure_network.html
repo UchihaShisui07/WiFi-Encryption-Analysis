@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wi-Fi Encryption Analysis - Live</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{--bg:#0F1720;--panel:#16212C;--panel-raised:#1D2C3A;--border:#263847;--text:#E8EEF4;--text-muted:#8CA0B4;--accent:#4FA8FF;--success:#45D6A0;--warning:#F0B94A;--danger:#F26B62;--sans:'Inter',sans-serif;--head:'Space Grotesk',var(--sans);--mono:'JetBrains Mono',ui-monospace,monospace;}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.5;padding:2.5rem 1.5rem 4rem;}
+.wrap{max-width:920px;margin:0 auto;}
+header h1{font-family:var(--head);font-weight:600;font-size:1.7rem;margin:0 0 .4rem;}
+header p{color:var(--text-muted);font-size:.95rem;max-width:65ch;margin:0 0 1rem;}
+.livebar{display:flex;align-items:center;gap:.6rem;margin-bottom:1.5rem;font-size:.8rem;color:var(--text-muted);}
+.livedot{width:7px;height:7px;border-radius:50%;background:var(--success);display:inline-block;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.noNetMsg{display:none;background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--warning);border-radius:6px;padding:.8rem 1rem;margin-bottom:1.5rem;font-size:.85rem;color:var(--text-muted);}
+.chips{display:flex;gap:.5rem;overflow-x:auto;padding-bottom:.5rem;margin-bottom:1.5rem;}
+.chip{flex:0 0 auto;background:var(--panel);border:1px solid var(--border);color:var(--text-muted);font-size:.85rem;padding:.55rem 1rem;border-radius:6px;cursor:pointer;white-space:nowrap;}
+.chip:hover{border-color:var(--accent);}
+.chip.active{background:var(--panel-raised);border-color:var(--accent);color:var(--text);}
+.chip .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;position:relative;top:-1px;}
+.chip .tag{font-size:.68rem;color:var(--accent);margin-left:6px;}
+.summary{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:6px;padding:1.1rem 1.3rem;margin-bottom:1.5rem;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:1rem;}
+.summary .id h2{font-family:var(--head);font-size:1.15rem;font-weight:600;margin:0 0 .2rem;}
+.summary .id .bssid{font-family:var(--mono);font-size:.78rem;color:var(--text-muted);}
+.badge{font-size:.78rem;font-weight:500;padding:.3rem .7rem;border-radius:4px;white-space:nowrap;}
+.badge.secure{background:rgba(69,214,160,.12);color:var(--success);}
+.badge.ok{background:rgba(79,168,255,.12);color:var(--accent);}
+.badge.attention{background:rgba(240,185,74,.12);color:var(--warning);}
+.badge.risk{background:rgba(242,107,98,.12);color:var(--danger);}
+.badge.neutral{background:rgba(140,160,180,.14);color:var(--text-muted);}
+.verdict{border-radius:6px;padding:1rem 1.2rem;margin-bottom:1.5rem;border:1px solid var(--border);}
+.verdict.safe{background:rgba(69,214,160,.08);border-color:rgba(69,214,160,.35);}
+.verdict.caution{background:rgba(240,185,74,.08);border-color:rgba(240,185,74,.35);}
+.verdict.avoid{background:rgba(242,107,98,.08);border-color:rgba(242,107,98,.35);}
+.verdict .vlabel{font-family:var(--head);font-weight:600;font-size:1.05rem;margin-bottom:.35rem;}
+.verdict.safe .vlabel{color:var(--success);}
+.verdict.caution .vlabel{color:var(--warning);}
+.verdict.avoid .vlabel{color:var(--danger);}
+.verdict ul{margin:.3rem 0 0;padding-left:1.1rem;font-size:.85rem;color:var(--text-muted);}
+.meta-row{display:flex;gap:1.6rem;font-family:var(--mono);font-size:.8rem;color:var(--text-muted);flex-wrap:wrap;}
+.meta-row span b{color:var(--text);font-weight:500;}
+.tabs{display:flex;gap:1.6rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem;flex-wrap:wrap;}
+.tab{background:none;border:none;color:var(--text-muted);font-size:.92rem;padding:.7rem .1rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.tab.active{color:var(--text);border-bottom-color:var(--accent);}
+.panel{display:none;}
+.panel.active{display:block;}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:1.3rem 1.4rem;margin-bottom:1rem;}
+.card h3{font-family:var(--head);font-size:1rem;font-weight:600;margin:0 0 .5rem;}
+.card p{color:var(--text-muted);font-size:.9rem;margin:0;}
+.proto-line{display:flex;align-items:baseline;gap:.7rem;margin-bottom:.8rem;flex-wrap:wrap;}
+.proto-line .proto{font-family:var(--head);font-size:1.5rem;font-weight:600;}
+.fact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-top:1rem;}
+.fact{background:var(--panel);padding:.9rem 1rem;}
+.fact .label{font-size:.75rem;color:var(--text-muted);margin-bottom:.3rem;}
+.fact .value{font-family:var(--mono);font-size:.92rem;}
+.check-row{display:flex;align-items:flex-start;gap:.8rem;padding:.9rem 0;border-bottom:1px solid var(--border);}
+.check-row:last-child{border-bottom:none;}
+.check-icon{flex:0 0 auto;width:20px;height:20px;margin-top:2px;}
+.check-body .title{font-size:.92rem;font-weight:500;margin-bottom:.2rem;}
+.check-body .desc{font-size:.85rem;color:var(--text-muted);}
+.threat-card{display:flex;gap:1rem;align-items:flex-start;}
+.threat-icon{flex:0 0 auto;width:22px;height:22px;margin-top:2px;}
+.chart-wrap{position:relative;height:220px;margin:1rem 0 .5rem;}
+.rec-note{font-size:.88rem;color:var(--text-muted);border-left:3px solid var(--accent);padding:.2rem 0 .2rem .9rem;margin-top:1rem;}
+.cipher-row{display:flex;gap:.8rem;align-items:center;margin:.8rem 0;flex-wrap:wrap;}
+.cipher-row input[type=text]{flex:1;min-width:180px;background:var(--panel-raised);border:1px solid var(--border);color:var(--text);padding:.5rem .7rem;border-radius:6px;font-family:var(--mono);font-size:.85rem;}
+.cipher-row input[type=range]{flex:1;min-width:120px;}
+.cipher-out{font-family:var(--mono);font-size:.95rem;background:var(--panel-raised);border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;margin:.6rem 0;word-break:break-all;}
+.crack-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.8rem;margin-top:.8rem;}
+.crack-table td{padding:.3rem .5rem;border-bottom:1px solid var(--border);}
+.crack-table tr.hit{background:rgba(69,214,160,.1);}
+.btn{background:var(--panel-raised);border:1px solid var(--border);color:var(--text);padding:.5rem 1rem;border-radius:6px;cursor:pointer;font-size:.85rem;}
+.btn:hover{border-color:var(--accent);}
+footer{margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:.8rem;color:var(--text-muted);max-width:75ch;}
+</style></head>
+<body><div class="wrap">
+<header>
+<h1>Wi-Fi encryption analysis - demo scenario</h1>
+<p>PRESENTATION DEMO: this is a simulated insecure-network scenario, run through the real analysis code, to illustrate how the tool reacts — not a live scan.</p>
+</header>
+<div class="livebar"><span class="livedot"></span><span id="liveStatus">Live &bull; starting&hellip;</span></div>
+<div class="noNetMsg" id="noNetMsg">No active Wi-Fi connection was found in the last scan. Showing the most recent data below.</div>
+<div class="chips" id="chips"></div>
+<div class="summary" id="summary"></div>
+<div class="verdict" id="verdict"></div>
+<div class="tabs">
+<button class="tab active" data-tab="overview">Overview</button>
+<button class="tab" data-tab="vulns">Vulnerabilities</button>
+<button class="tab" data-tab="threats">Threats</button>
+<button class="tab" data-tab="channels">Channels</button>
+<button class="tab" data-tab="cipher">Cipher demo</button>
+</div>
+<div class="panel active" id="panel-overview"></div>
+<div class="panel" id="panel-vulns"></div>
+<div class="panel" id="panel-threats"></div>
+<div class="panel" id="panel-channels"></div>
+<div class="panel" id="panel-cipher"></div>
+<footer>This page polls a local server (started by wifi_scan_report.py) every few seconds for a fresh scan. Close that terminal window, or press Ctrl+C in it, to stop live updates.</footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const ICONS = {
+  check: '<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#45D6A0" stroke-width="1.4"/><path d="M6 10.2l2.5 2.5L14 7" stroke="#45D6A0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#F0B94A" stroke-width="1.4"/><path d="M10 6v5" stroke="#F0B94A" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="13.6" r="0.9" fill="#F0B94A"/></svg>',
+  danger: '<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#F26B62" stroke-width="1.4"/><path d="M7 7l6 6M13 7l-6 6" stroke="#F26B62" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  neutral: '<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#8CA0B4" stroke-width="1.4"/><path d="M7 10h6" stroke="#8CA0B4" stroke-width="1.6" stroke-linecap="round"/></svg>'
+};
+let networks = [{"id": "current-CafeFreeWiFi11223344", "ssid": "Cafe_Free_WiFi", "bssid": "11:22:33:44:55:66", "isCurrent": true, "encryption": "Open", "cipher": "None", "band": "2.4 GHz", "channel": "6", "signal": "45%", "risk": "risk", "riskLabel": "High risk", "protoNote": "This network has no encryption. Anything sent over it can be read by anyone nearby with basic tools.", "passphrase": {"status": "na", "note": "Not assessed. Passphrase strength can't be read from a scan; checking it would mean attempting to crack the key, which is only appropriate on a network you own."}, "defaultLogin": {"status": "na", "note": "Not assessed. This requires logging into the router's own admin page, not a Wi-Fi scan."}, "ports": {"status": "na", "list": [], "note": "Not assessed. Checking open ports requires directly scanning the router, which needs separate, explicit permission."}, "rogueAp": {"detected": true, "note": "Multiple access points are broadcasting the name 'Cafe_Free_WiFi' with DIFFERENT security settings (Open, WPA2-Personal). This is a common sign of a fake 'evil twin' hotspot, not just a mesh/extender setup."}, "mitm": {"detected": false, "note": "Not assessed. Real MITM detection requires packet capture in monitor mode, which this scan does not perform."}, "verdict": {"level": "avoid", "label": "Avoid connecting", "reasons": ["Encryption is weak or missing (see Overview tab).", "A possible rogue access point was detected under this name."]}}, {"id": "CafeFreeWiFiAABBCCDDEEFF", "ssid": "Cafe_Free_WiFi", "bssid": "AA:BB:CC:DD:EE:FF", "isCurrent": false, "encryption": "WPA2-Personal", "cipher": "CCMP", "band": "2.4 GHz", "channel": "6", "signal": "40%", "risk": "ok", "riskLabel": "Acceptable", "protoNote": "WPA2 with AES/CCMP is still considered reasonably secure, though WPA3 offers stronger protection against offline password-guessing.", "passphrase": {"status": "na", "note": "Not assessed. Passphrase strength can't be read from a scan; checking it would mean attempting to crack the key, which is only appropriate on a network you own."}, "defaultLogin": {"status": "na", "note": "Not assessed. This requires logging into the router's own admin page, not a Wi-Fi scan."}, "ports": {"status": "na", "list": [], "note": "Not assessed. Checking open ports requires directly scanning the router, which needs separate, explicit permission."}, "rogueAp": {"detected": true, "note": "Multiple access points are broadcasting the name 'Cafe_Free_WiFi' with DIFFERENT security settings (Open, WPA2-Personal). This is a common sign of a fake 'evil twin' hotspot, not just a mesh/extender setup."}, "mitm": {"detected": false, "note": "Not assessed. Real MITM detection requires packet capture in monitor mode, which this scan does not perform."}, "verdict": {"level": "avoid", "label": "Avoid connecting", "reasons": ["A possible rogue access point was detected under this name."]}}, {"id": "HomeRouter2G123456789ABC", "ssid": "Home_Router_2G", "bssid": "12:34:56:78:9A:BC", "isCurrent": false, "encryption": "WPA2-Personal", "cipher": "CCMP", "band": "2.4 GHz", "channel": "1", "signal": "30%", "risk": "ok", "riskLabel": "Acceptable", "protoNote": "WPA2 with AES/CCMP is still considered reasonably secure, though WPA3 offers stronger protection against offline password-guessing.", "passphrase": {"status": "na", "note": "Not assessed. Passphrase strength can't be read from a scan; checking it would mean attempting to crack the key, which is only appropriate on a network you own."}, "defaultLogin": {"status": "na", "note": "Not assessed. This requires logging into the router's own admin page, not a Wi-Fi scan."}, "ports": {"status": "na", "list": [], "note": "Not assessed. Checking open ports requires directly scanning the router, which needs separate, explicit permission."}, "rogueAp": {"detected": false, "note": "Only one set of access points broadcasting this name was found, all with matching security settings."}, "mitm": {"detected": false, "note": "Not assessed. Real MITM detection requires packet capture in monitor mode, which this scan does not perform."}, "verdict": {"level": "safe", "label": "Safe to connect", "reasons": ["Encryption is current and no threats were detected in this scan."]}}, {"id": "OldNeighborNetFEDCBA9876", "ssid": "Old_Neighbor_Net", "bssid": "FE:DC:BA:98:76:54", "isCurrent": false, "encryption": "WEP", "cipher": "WEP", "band": "2.4 GHz", "channel": "11", "signal": "20%", "risk": "risk", "riskLabel": "High risk", "protoNote": "WEP was deprecated in 2004. Its key can typically be recovered from a few minutes of captured traffic.", "passphrase": {"status": "na", "note": "Not assessed. Passphrase strength can't be read from a scan; checking it would mean attempting to crack the key, which is only appropriate on a network you own."}, "defaultLogin": {"status": "na", "note": "Not assessed. This requires logging into the router's own admin page, not a Wi-Fi scan."}, "ports": {"status": "na", "list": [], "note": "Not assessed. Checking open ports requires directly scanning the router, which needs separate, explicit permission."}, "rogueAp": {"detected": false, "note": "Only one set of access points broadcasting this name was found, all with matching security settings."}, "mitm": {"detected": false, "note": "Not assessed. Real MITM detection requires packet capture in monitor mode, which this scan does not perform."}, "verdict": {"level": "avoid", "label": "Avoid connecting", "reasons": ["Encryption is weak or missing (see Overview tab)."]}}];
+let channelTally = {"6": 2, "1": 1, "11": 1};
+let activeId = networks.length ? networks[0].id : null;
+let chartInstance = null;
+
+function riskBadgeClass(r){return {secure:'secure',ok:'ok',attention:'attention',risk:'risk',unknown:'neutral'}[r]||'neutral';}
+function dotColor(r){return {secure:'var(--success)',ok:'var(--accent)',attention:'var(--warning)',risk:'var(--danger)',unknown:'var(--text-muted)'}[r]||'var(--text-muted)';}
+function statusIcon(s){if(['ok','strong'].includes(s))return ICONS.check;if(['warn','weak'].includes(s))return ICONS.warn;if(['fail','default','none'].includes(s))return ICONS.danger;return ICONS.neutral;}
+
+function renderChips(){
+  document.getElementById('chips').innerHTML = networks.map(n=>`
+    <button class="chip ${n.id===activeId?'active':''}" data-id="${n.id}">
+      <span class="dot" style="background:${dotColor(n.risk)}"></span>${n.ssid}${n.isCurrent?'<span class="tag">connected</span>':''}
+    </button>`).join('');
+  document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{activeId=b.dataset.id;renderAll();}));
+}
+function renderSummary(n){
+  document.getElementById('summary').innerHTML = `
+    <div class="id"><h2>${n.ssid}</h2><div class="bssid">${n.bssid}</div></div>
+    <div class="meta-row"><span>band <b>${n.band}</b></span><span>channel <b>${n.channel}</b></span><span>signal <b>${n.signal}</b></span></div>
+    <div class="badge ${riskBadgeClass(n.risk)}">${n.riskLabel}</div>`;
+}
+function renderVerdict(n){
+  const el = document.getElementById('verdict');
+  el.className = 'verdict ' + n.verdict.level;
+  el.innerHTML = `<div class="vlabel">${n.verdict.label}</div><ul>${n.verdict.reasons.map(r=>`<li>${r}</li>`).join('')}</ul>`;
+}
+function renderOverview(n){
+  document.getElementById('panel-overview').innerHTML = `
+    <div class="card"><div class="proto-line"><span class="proto">${n.encryption}</span><span class="badge ${riskBadgeClass(n.risk)}">${n.riskLabel}</span></div>
+    <p>${n.protoNote}</p>
+    <div class="fact-grid">
+      <div class="fact"><div class="label">Cipher</div><div class="value">${n.cipher}</div></div>
+      <div class="fact"><div class="label">Band</div><div class="value">${n.band}</div></div>
+      <div class="fact"><div class="label">Channel</div><div class="value">${n.channel}</div></div>
+      <div class="fact"><div class="label">Signal</div><div class="value">${n.signal}</div></div>
+    </div></div>`;
+}
+function renderVulns(n){
+  document.getElementById('panel-vulns').innerHTML = `
+    <div class="card">
+      <div class="check-row"><div class="check-icon">${statusIcon(n.passphrase.status)}</div><div class="check-body"><div class="title">Passphrase strength</div><div class="desc">${n.passphrase.note}</div></div></div>
+      <div class="check-row"><div class="check-icon">${statusIcon(n.defaultLogin.status)}</div><div class="check-body"><div class="title">Router admin credentials</div><div class="desc">${n.defaultLogin.note}</div></div></div>
+      <div class="check-row"><div class="check-icon">${statusIcon(n.ports.status)}</div><div class="check-body"><div class="title">Open logical ports</div><div class="desc">${n.ports.note}</div></div></div>
+    </div>`;
+}
+function renderThreats(n){
+  document.getElementById('panel-threats').innerHTML = `
+    <div class="card threat-card"><div class="threat-icon">${n.rogueAp.detected?ICONS.danger:ICONS.check}</div><div><h3>Rogue access point</h3><p>${n.rogueAp.note}</p></div></div>
+    <div class="card threat-card"><div class="threat-icon">${ICONS.neutral}</div><div><h3>Man-in-the-middle activity</h3><p>${n.mitm.note}</p></div></div>`;
+}
+function renderChannels(n){
+  const panel = document.getElementById('panel-channels');
+  const labels = Object.keys(channelTally).sort((a,b)=>a-b);
+  const data = labels.map(l=>channelTally[l]);
+  if(n.band !== '2.4 GHz' || labels.length===0){
+    panel.innerHTML = `<div class="card"><h3>Channel data</h3><p>${labels.length===0?'No 2.4 GHz networks were seen in this scan to compare against.':'This network runs outside 2.4 GHz, so congestion here mainly affects the 2.4 GHz networks below.'}</p><div class="chart-wrap"><canvas id="channelChart" role="img" aria-label="Bar chart of networks detected per 2.4 GHz channel"></canvas></div></div>`;
+  } else {
+    const quiet = ['1','6','11'].filter(c=>c!==n.channel).sort((a,b)=>(channelTally[a]||0)-(channelTally[b]||0));
+    panel.innerHTML = `<div class="card"><h3>Channel ${n.channel} congestion</h3><p>${channelTally[n.channel]||0} access points were seen sharing channel ${n.channel} in this scan.</p>
+      <div class="chart-wrap"><canvas id="channelChart" role="img" aria-label="Bar chart of networks detected per 2.4 GHz channel, this network's channel highlighted"></canvas></div>
+      <div class="rec-note">Channels 1, 6, and 11 are the only non-overlapping 2.4 GHz channels. Channel ${quiet[0]} has the least traffic nearby right now.</div></div>`;
+  }
+  if(chartInstance){chartInstance.destroy();}
+  const ctx = document.getElementById('channelChart');
+  const colors = labels.map(l=> l===n.channel ? '#4FA8FF' : '#2A3D4F');
+  chartInstance = new Chart(ctx,{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors,borderRadius:4,maxBarThickness:28}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:'#8CA0B4'},title:{display:true,text:'Channel',color:'#8CA0B4'}},
+      y:{beginAtZero:true,ticks:{color:'#8CA0B4',stepSize:1},grid:{color:'#1F2E3B'}}}}});
+}
+function caesarEncode(text, shift){
+  return text.replace(/[a-zA-Z]/g, c=>{
+    const base = c === c.toUpperCase() ? 65 : 97;
+    return String.fromCharCode((c.charCodeAt(0)-base+shift+26)%26+base);
+  });
+}
+function renderCipher(n){
+  const rawSsid = (n.ssid || '').trim();
+  const usable = rawSsid && !/^not available$/i.test(rawSsid) && rawSsid !== '(hidden)';
+  const sample = (usable ? rawSsid.replace(/[^a-zA-Z ]/g,'').trim() : '') || 'Wireless Network';
+  const compareLine = n.risk==='secure'
+    ? "WPA3's SAE handshake has no equivalent of &quot;just try all the keys&quot; — that's exactly what makes it resistant to this kind of brute force."
+    : n.risk==='risk'
+      ? 'weak or absent encryption like this can, in practice, be broken almost as quickly as a Caesar cipher with the right tools.'
+      : 'it resists simple brute force, though a weak passphrase underneath it can still be guessed.';
+  document.getElementById('panel-cipher').innerHTML = `
+    <div class="card">
+      <h3>Why a Caesar cipher doesn't belong in real Wi-Fi security</h3>
+      <div class="rec-note" style="margin-top:0;margin-bottom:1rem;">Demo only &mdash; this does not check, test, guess, or reveal your real Wi-Fi password. It never touches your actual credentials; it only encodes throwaway text you type in below.</div>
+      <p>A Caesar cipher shifts every letter by a fixed number of places. It only has 25 possible keys, so a computer can try all of them instantly. Type anything below to see it encoded, then click "Break it" to watch every possible shift get tried in an instant &mdash; that speed is the whole point of the comparison that follows.</p>
+      <div class="cipher-row">
+        <input type="text" id="cipherText" value="${sample}" maxlength="40">
+        <input type="range" id="cipherShift" min="1" max="25" value="3">
+        <span id="shiftOut" style="font-family:var(--mono);font-size:.85rem;">shift 3</span>
+      </div>
+      <div class="cipher-out" id="cipherEncoded"></div>
+      <button class="btn" id="crackBtn" type="button">Break it (try all 25 shifts)</button>
+      <table class="crack-table" id="crackTable" style="display:none;"></table>
+    </div>
+    <div class="card">
+      <h3>How ${n.encryption} compares</h3>
+      <p>Unlike a Caesar cipher, ${n.encryption}${n.cipher && n.cipher !== 'Unknown' ? ' (cipher: ' + n.cipher + ')' : ''} isn't beaten by simply trying every key in a list &mdash; ${compareLine}</p>
+    </div>`;
+
+  const textEl = document.getElementById('cipherText');
+  const shiftEl = document.getElementById('cipherShift');
+  const shiftOut = document.getElementById('shiftOut');
+  const encodedEl = document.getElementById('cipherEncoded');
+  const crackBtn = document.getElementById('crackBtn');
+  const crackTable = document.getElementById('crackTable');
+
+  function updateEncoded(){
+    const shift = parseInt(shiftEl.value,10);
+    shiftOut.textContent = 'shift ' + shift;
+    const src = textEl.value.trim() || 'Wireless Network';
+    encodedEl.textContent = caesarEncode(src, shift);
+    crackTable.style.display = 'none';
+  }
+  textEl.addEventListener('input', updateEncoded);
+  shiftEl.addEventListener('input', updateEncoded);
+  crackBtn.addEventListener('click', ()=>{
+    const shift = parseInt(shiftEl.value,10);
+    let rows = '';
+    for(let s=1; s<=25; s++){
+      const guess = caesarEncode(encodedEl.textContent, 26-s);
+      rows += `<tr class="${s===shift?'hit':''}"><td>shift ${s}</td><td>${guess}</td></tr>`;
+    }
+    crackTable.innerHTML = rows;
+    crackTable.style.display = '';
+  });
+  updateEncoded();
+}
+function renderAll(){
+  if(!activeId){return;}
+  const n = networks.find(x=>x.id===activeId) || networks[0];
+  renderChips();renderSummary(n);renderVerdict(n);renderOverview(n);renderVulns(n);renderThreats(n);renderChannels(n);renderCipher(n);
+}
+
+async function fetchScan(){
+  try{
+    const res = await fetch('/scan', {cache:'no-store'});
+    const data = await res.json();
+    document.getElementById('liveStatus').textContent = 'Live • updated ' + new Date().toLocaleTimeString();
+    if(data.entries && data.entries.length){
+      document.getElementById('noNetMsg').style.display = 'none';
+      const prevId = activeId;
+      networks = data.entries;
+      channelTally = data.tally;
+      const stillThere = networks.find(n=>n.id===prevId);
+      const current = networks.find(n=>n.isCurrent);
+      activeId = stillThere ? prevId : (current ? current.id : networks[0].id);
+      renderAll();
+    } else {
+      document.getElementById('noNetMsg').style.display = 'block';
+    }
+  } catch(err){
+    document.getElementById('liveStatus').textContent = 'Live • waiting for local server…';
+  }
+}
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+renderAll();
+fetchScan();
+setInterval(fetchScan, 999999999);
+</script></body></html>
